@@ -64,3 +64,19 @@ socket.on('ice-candidate', async candidate => {
     console.error('Erro ao adicionar ICE Candidate', e);
   }
 });
+
+function endCall() {
+  if (peerConnection) {
+    peerConnection.close();
+    peerConnection = null;
+  }
+
+  if (localStream) {
+    localStream.getTracks().forEach(track => track.stop());
+    localVideo.srcObject = null;
+  }
+
+  remoteVideo.srcObject = null;
+  alert("Chamada encerrada.");
+}
+
