@@ -1,4 +1,4 @@
-const socket = io(); // conecta com o servidor de sinalização
+const socket = io("https://teste-site-y0l4.onrender.com");
 
 const localVideo = document.getElementById('localVideo');
 const remoteVideo = document.getElementById('remoteVideo');
