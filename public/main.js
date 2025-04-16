@@ -3,95 +3,57 @@ const socket = io("https://teste-site-y0l4.onrender.com");
 
 const localVideo = document.getElementById('localVideo');
 const remoteVideo = document.getElementById('remoteVideo');
+const btnChamar = document.getElementById('btnChamar');
+const btnAceitar = document.getElementById('btnAceitar');
+const btnRecusar = document.getElementById('btnRecusar');
+const btnEncerrar = document.getElementById('btnEncerrar');
+
 let localStream;
 let peerConnection;
+const config = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
 
-const config = {
-  iceServers: [
-    { urls: 'stun:stun.l.google.com:19302' }
-  ]
+btnChamar.onclick = () => {
+  socket.emit('solicitar-chamada');
 };
 
-// Botão para iniciar chamada
-const startBtn = document.getElementById("startCall");
-startBtn.addEventListener("click", () => {
-  socket.emit("solicitar-chamada");
+btnAceitar.onclick = async () => {
+  socket.emit('resposta-solicitacao', true);
+  iniciarChamadaComoReceptor();
+};
+
+btnRecusar.onclick = () => {
+  socket.emit('resposta-solicitacao', false);
+  btnAceitar.hidden = true;
+  btnRecusar.hidden = true;
+};
+
+btnEncerrar.onclick = encerrarChamada;
+
+socket.on('receber-solicitacao', () => {
+  btnAceitar.hidden = false;
+  btnRecusar.hidden = false;
 });
 
-// Recebe solicitação de chamada
-socket.on("receber-solicitacao", () => {
-  const aceitar = confirm("Alguém deseja iniciar uma chamada com você. Aceitar?");
-  if (aceitar) {
-    iniciarChamada();
-    socket.emit("resposta-solicitacao", true);
-  } else {
-    socket.emit("resposta-solicitacao", false);
-  }
+socket.on('solicitacao-aceita', () => {
+  iniciarChamadaComoEmissor();
 });
 
-// Se o outro aceitar, iniciar a chamada
-socket.on("solicitacao-aceita", () => {
-  iniciarChamada();
+socket.on('solicitacao-recusada', () => {
+  alert("Usuário recusou a chamada.");
 });
 
-// Se o outro recusar
-socket.on("solicitacao-recusada", () => {
-  alert("O outro usuário recusou a chamada.");
-});
-
-// Função principal de chamada
-async function iniciarChamada() {
-  localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-  localVideo.srcObject = localStream;
-
-  peerConnection = new RTCPeerConnection(config);
-  localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
-
-  peerConnection.ontrack = event => {
-    remoteVideo.srcObject = event.streams[0];
-  };
-
-  peerConnection.onicecandidate = event => {
-    if (event.candidate) {
-      socket.emit('ice-candidate', event.candidate);
-    }
-  };
-
-  const offer = await peerConnection.createOffer();
-  await peerConnection.setLocalDescription(offer);
-  socket.emit('offer', offer);
-}
-
-// Recebe offer
 socket.on('offer', async offer => {
-  if (!peerConnection) {
-    peerConnection = new RTCPeerConnection(config);
-    peerConnection.ontrack = event => {
-      remoteVideo.srcObject = event.streams[0];
-    };
-    peerConnection.onicecandidate = event => {
-      if (event.candidate) {
-        socket.emit('ice-candidate', event.candidate);
-      }
-    };
-
-    localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-    localVideo.srcObject = localStream;
-    localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
-  }
-
+  peerConnection = criarPeer();
   await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
   const answer = await peerConnection.createAnswer();
   await peerConnection.setLocalDescription(answer);
   socket.emit('answer', answer);
 });
 
-// Recebe answer
 socket.on('answer', async answer => {
   await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
 });
 
-// Recebe ice candidates
 socket.on('ice-candidate', async candidate => {
   try {
     await peerConnection.addIceCandidate(candidate);
@@ -100,26 +62,55 @@ socket.on('ice-candidate', async candidate => {
   }
 });
 
-// Desligar chamada
-const endBtn = document.getElementById("endCall");
-endBtn.addEventListener("click", () => {
-  endCall();
-  socket.emit("encerrar-chamada");
-});
+socket.on('chamada-encerrada', encerrarChamada);
 
-socket.on("chamada-encerrada", () => {
-  alert("O outro usuário encerrou a chamada.");
-  endCall();
-});
+function criarPeer() {
+  const pc = new RTCPeerConnection(config);
 
-function endCall() {
-  if (peerConnection) {
-    peerConnection.close();
-    peerConnection = null;
-  }
+  pc.onicecandidate = event => {
+    if (event.candidate) {
+      socket.emit('ice-candidate', event.candidate);
+    }
+  };
+
+  pc.ontrack = event => {
+    remoteVideo.srcObject = event.streams[0];
+  };
+
+  localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+  return pc;
+}
+
+async function iniciarChamadaComoEmissor() {
+  localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+  localVideo.srcObject = localStream;
+
+  peerConnection = criarPeer();
+
+  const offer = await peerConnection.createOffer();
+  await peerConnection.setLocalDescription(offer);
+  socket.emit('offer', offer);
+  btnEncerrar.hidden = false;
+}
+
+async function iniciarChamadaComoReceptor() {
+  localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+  localVideo.srcObject = localStream;
+
+  peerConnection = criarPeer();
+  btnEncerrar.hidden = false;
+  btnAceitar.hidden = true;
+  btnRecusar.hidden = true;
+}
+
+function encerrarChamada() {
+  if (peerConnection) peerConnection.close();
   if (localStream) {
     localStream.getTracks().forEach(track => track.stop());
     localVideo.srcObject = null;
   }
   remoteVideo.srcObject = null;
+  peerConnection = null;
+  socket.emit('encerrar-chamada');
+  btnEncerrar.hidden = true;
 }
