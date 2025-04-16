@@ -1,33 +1,25 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <title>Chamada de Vídeo</title>
-  <style>
-    video {
-      width: 45%;
-      margin: 1%;
-      border: 2px solid #555;
-    }
-    body {
-      text-align: center;
-      font-family: sans-serif;
-      background: #f0f0f0;
-    }
-    button {
-      padding: 10px 20px;
-      font-size: 16px;
-    }
-  </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Videochamada</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <h2>Chamada de Vídeo</h2>
-  <video id="localVideo" autoplay muted></video>
-  <video id="remoteVideo" autoplay></video>
-  <br>
-  <button onclick="startCall()">Iniciar Chamada</button>
-  <button onclick="endCall()" style="background-color: red; color: white;">Desligar</button>
+  <h1>Plataforma de Videochamada</h1>
 
+  <div id="videos">
+    <video id="localVideo" autoplay muted></video>
+    <video id="remoteVideo" autoplay></video>
+  </div>
+
+  <div id="botoes">
+    <button id="btnChamar">Iniciar Chamada</button>
+    <button id="btnAceitar" hidden>Aceitar</button>
+    <button id="btnRecusar" hidden>Recusar</button>
+    <button id="btnEncerrar" hidden>Encerrar Chamada</button>
+  </div>
 
   <script src="/socket.io/socket.io.js"></script>
   <script src="main.js"></script>
